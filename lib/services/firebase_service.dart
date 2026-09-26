@@ -144,6 +144,38 @@ class FirebaseService {
   Future<bool> saveBirthdate(String uid, String birthdateIso, String tok) =>
       _patch('users/$uid', {'birthdate': birthdateIso}, tok);
 
+  // ── Account deletion (in-app "Delete My Account") ────────────────────────
+  // NEW — supports the Play Console Data safety "delete account" flow.
+  // Two steps: remove the RTDB record, then remove the actual Auth
+  // credential via Identity Toolkit's accounts:delete endpoint (same
+  // family as signIn/signUp above, just a different operation).
+
+  /// Deletes users/{uid} entirely. Reuses the same null-value-deletes
+  /// trick as unblockUser: PATCHing the parent "users" node with
+  /// {uid: null} removes that whole subtree in one call.
+  Future<bool> deleteUserData(String uid, String tok) =>
+      _patch('users', {uid: null}, tok);
+
+  /// Deletes the Firebase Auth account itself, given a valid (ideally
+  /// freshly-reissued) idToken. Returns true only on a real 200.
+  Future<bool> deleteAuthAccount(String idToken) async {
+    try {
+      final res = await http.post(
+        Uri.parse('$_kAuthBase:delete?key=$_kApiKey'),
+        headers: await _headers(),
+        body: jsonEncode({'idToken': idToken}),
+      );
+      if (res.statusCode != 200) {
+        debugPrint('FB account delete failed: ${res.statusCode} ${res.body}');
+        return false;
+      }
+      return true;
+    } catch (e) {
+      debugPrint('FB account delete error: $e');
+      return false;
+    }
+  }
+
   // ── HTTP helpers ──────────────────────────────────────────────────────────
   Future<Map<dynamic, dynamic>?> _get(String path, String tok) async {
     try {
