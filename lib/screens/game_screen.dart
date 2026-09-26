@@ -6,10 +6,14 @@ import '../core/constants.dart';
 import '../game/game_notifier.dart';
 import '../game/game_state.dart';
 import '../services/audio_service.dart';
+import '../services/safety_service.dart';
+import '../services/profanity_filter.dart';
 import '../theme/app_theme.dart';
 import '../widgets/board_widget.dart';
 import '../widgets/dice_widget.dart';
 import '../widgets/common_widgets.dart';
+import '../widgets/chat_safety_widgets.dart'
+    show kPresetChatPhrases, ReportUserDialog;
 import 'menu_screen.dart';
 
 class GameScreen extends ConsumerStatefulWidget {
@@ -25,10 +29,55 @@ class _GameScreenState extends ConsumerState<GameScreen> {
   bool _gameOverShown = false;
   bool _waitingActive = false;
 
+  // NEW: age-gated chat mode. Defaults to false (preset-phrase-only)
+  // until we've actually confirmed the account is 18+ — same
+  // "unknown defaults to restricted" posture as SafetyService itself.
+  bool _freeTextAllowed = false;
+
+  // NEW: uids the current account has blocked, loaded once for online
+  // games. Filtering happens client-side in _ChatPanel.
+  Set<String> _blockedUids = {};
+
   @override
   void initState() {
     super.initState();
     ref.read(audioServiceProvider).startBgm();
+    _loadChatPermission();
+    _loadBlockedUids();
+  }
+
+  // NEW: loads the caller's blocklist so _ChatPanel can filter messages
+  // from anyone already blocked, without waiting on a full app restart.
+  Future<void> _loadBlockedUids() async {
+    final gs = ref.read(gameProvider);
+    final ud = gs.userData;
+    if (gs.mode != GameMode.online || ud == null || ud.idToken == null) return;
+
+    final safety = ref.read(safetyServiceProvider);
+    final blocked = await safety.getBlockedUids(
+      myUid: ud.uid,
+      idToken: ud.idToken!,
+    );
+    if (!mounted) return;
+    setState(() => _blockedUids = blocked);
+  }
+
+  // NEW: fetches the account's birthdate once (online games only) and
+  // decides whether this session gets free-text or preset-only chat.
+  Future<void> _loadChatPermission() async {
+    final gs = ref.read(gameProvider);
+    final ud = gs.userData;
+    if (gs.mode != GameMode.online || ud == null || ud.idToken == null) return;
+
+    final safety = ref.read(safetyServiceProvider);
+    final birthdate = await safety.getBirthdate(
+      uid: ud.uid,
+      idToken: ud.idToken!,
+    );
+    if (!mounted) return;
+    setState(() {
+      _freeTextAllowed = safety.isFreeTextAllowed(birthdate);
+    });
   }
 
   @override
@@ -398,8 +447,17 @@ class _GameScreenState extends ConsumerState<GameScreen> {
             ),
 
             // ── Chat (online only) ─────────────────────────────────────────
+            // NEW: freeTextAllowed passed through — decides whether
+            // _ChatPanel renders a real text field or preset-phrase chips.
             if (gs.mode == GameMode.online && _showChat)
-              _ChatPanel(chatCtrl: _chatCtrl, gs: gs),
+              _ChatPanel(
+                chatCtrl: _chatCtrl,
+                gs: gs,
+                freeTextAllowed: _freeTextAllowed,
+                blockedUids: _blockedUids,
+                onBlocked: (uid) =>
+                    setState(() => _blockedUids = {..._blockedUids, uid}),
+              ),
           ],
         ),
       ),
@@ -425,13 +483,115 @@ class _StatusBar extends StatelessWidget {
 }
 
 // ── Chat panel ────────────────────────────────────────────────────────────────
+// NEW: freeTextAllowed gates which input renders. Preset phrases are the
+// same 8 phrases defined in widgets/chat_safety_widgets.dart
+// (kPresetChatPhrases) — reused here directly rather than duplicating the
+// list, so the restricted vocabulary stays defined in exactly one place.
 class _ChatPanel extends ConsumerWidget {
   final TextEditingController chatCtrl;
   final GameState gs;
-  const _ChatPanel({required this.chatCtrl, required this.gs});
+  final bool freeTextAllowed;
+  final Set<String> blockedUids;
+  final void Function(String blockedUid) onBlocked;
+  const _ChatPanel({
+    required this.chatCtrl,
+    required this.gs,
+    required this.freeTextAllowed,
+    required this.blockedUids,
+    required this.onBlocked,
+  });
+
+  void _send(WidgetRef ref, BuildContext context, String text) {
+    if (text.trim().isEmpty) return;
+    ref.read(gameProvider.notifier).sendChat(text.trim());
+  }
+
+  void _sendFreeText(WidgetRef ref, BuildContext context) {
+    final text = chatCtrl.text.trim();
+    if (text.isEmpty) return;
+
+    // Blocked locally before it ever reaches the database — same check
+    // used in widgets/chat_safety_widgets.dart's FreeTextChatBar.
+    if (!ProfanityFilter.isAllowed(text)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+              'Message blocked — please keep chat respectful and don\'t share contact info.'),
+        ),
+      );
+      return;
+    }
+
+    _send(ref, context, text);
+    chatCtrl.clear();
+  }
+
+  Future<void> _handleMenuAction(
+    BuildContext context,
+    WidgetRef ref,
+    String action,
+    String targetUid,
+    String targetName,
+  ) async {
+    final myUid = gs.userData!.uid;
+    final idToken = gs.userData!.idToken!;
+
+    if (action == 'block') {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          backgroundColor: AppColors.card,
+          title: Text('Block $targetName?'),
+          content: const Text(
+            'You won\'t see their messages anymore. They won\'t be notified.',
+            style: TextStyle(color: Colors.white70),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('Block'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true) return;
+
+      final safety = ref.read(safetyServiceProvider);
+      await safety.blockUser(myUid: myUid, idToken: idToken, blockedUid: targetUid);
+      onBlocked(targetUid);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('$targetName blocked')),
+        );
+      }
+    } else if (action == 'report') {
+      await ReportUserDialog.show(
+        context,
+        myUid: myUid,
+        idToken: idToken,
+        targetUid: targetUid,
+        targetName: targetName,
+        roomId: gs.roomId ?? '',
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final myUid = gs.userData?.uid;
+
+    // Filter out anyone already blocked before rendering. Messages with
+    // no senderUid (older rooms written before this field existed, or
+    // local/vsBot) are never filtered — there's nothing to match against.
+    final visibleMessages = gs.chatMessages
+        .where((m) => m.senderUid == null || !blockedUids.contains(m.senderUid))
+        .toList();
+
     return Container(
       color: AppColors.surface,
       height: 140,
@@ -440,10 +600,14 @@ class _ChatPanel extends ConsumerWidget {
         Expanded(
           child: ListView.builder(
             reverse: true,
-            itemCount: gs.chatMessages.length,
+            itemCount: visibleMessages.length,
             itemBuilder: (_, i) {
-              final msg = gs.chatMessages[gs.chatMessages.length - 1 - i];
+              final msg = visibleMessages[visibleMessages.length - 1 - i];
               final pi  = kPlayerNames.indexOf(msg.player).clamp(0, 3);
+              // Only offer block/report for messages with a known sender
+              // uid that isn't the current user themselves.
+              final canModerate =
+                  msg.senderUid != null && msg.senderUid != myUid;
               return Padding(
                 padding: const EdgeInsets.only(bottom: 3),
                 child: Row(
@@ -468,43 +632,71 @@ class _ChatPanel extends ConsumerWidget {
                         style: const TextStyle(
                             fontSize: 11, color: Colors.white70)),
                   ),
+                  if (canModerate)
+                    PopupMenuButton<String>(
+                      padding: EdgeInsets.zero,
+                      icon: const Icon(Icons.more_vert,
+                          size: 14, color: Colors.white38),
+                      onSelected: (action) => _handleMenuAction(
+                          context, ref, action, msg.senderUid!, msg.player),
+                      itemBuilder: (_) => const [
+                        PopupMenuItem(value: 'block', child: Text('Block')),
+                        PopupMenuItem(value: 'report', child: Text('Report')),
+                      ],
+                    ),
                 ]),
               );
             },
           ),
         ),
-        Row(children: [
-          Expanded(
-            child: TextField(
-              controller: chatCtrl,
-              style:
-                  const TextStyle(color: Colors.white, fontSize: 12),
-              decoration: InputDecoration(
-                hintText:    'Message…',
-                hintStyle:   const TextStyle(color: Colors.white30),
-                filled:      true,
-                fillColor:   AppColors.card,
-                contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 10, vertical: 8),
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide.none),
+
+        // NEW: gated input — preset chips for non-adult/unknown accounts,
+        // real text field only once confirmed 18+.
+        if (freeTextAllowed)
+          Row(children: [
+            Expanded(
+              child: TextField(
+                controller: chatCtrl,
+                style:
+                    const TextStyle(color: Colors.white, fontSize: 12),
+                decoration: InputDecoration(
+                  hintText:    'Message…',
+                  hintStyle:   const TextStyle(color: Colors.white30),
+                  filled:      true,
+                  fillColor:   AppColors.card,
+                  contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 8),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide.none),
+                ),
+                onSubmitted: (_) => _sendFreeText(ref, context),
               ),
             ),
+            const SizedBox(width: 6),
+            IconButton(
+              icon: const Icon(Icons.send_rounded, size: 18),
+              color: AppColors.violetLit,
+              onPressed: () => _sendFreeText(ref, context),
+            ),
+          ])
+        else
+          SizedBox(
+            height: 32,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: kPresetChatPhrases.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 6),
+              itemBuilder: (_, i) {
+                final phrase = kPresetChatPhrases[i];
+                return ActionChip(
+                  label: Text(phrase, style: const TextStyle(fontSize: 11)),
+                  backgroundColor: AppColors.card,
+                  onPressed: () => _send(ref, context, phrase),
+                );
+              },
+            ),
           ),
-          const SizedBox(width: 6),
-          IconButton(
-            icon: const Icon(Icons.send_rounded, size: 18),
-            color: AppColors.violetLit,
-            onPressed: () {
-              if (chatCtrl.text.trim().isEmpty) return;
-              ref
-                  .read(gameProvider.notifier)
-                  .sendChat(chatCtrl.text.trim());
-              chatCtrl.clear();
-            },
-          ),
-        ]),
       ]),
     );
   }
