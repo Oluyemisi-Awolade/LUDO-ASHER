@@ -118,6 +118,7 @@ class GameNotifier extends StateNotifier<GameState> {
       playerColorIndex: playerColor,
       currentTurn: 0,
       playerNames: names,
+      playerUids: const {}, // NEW: reset per-seat uid map on every fresh setup
       tokens: tokens,
       dice1: 0,
       dice2: 0,
@@ -656,6 +657,11 @@ class GameNotifier extends StateNotifier<GameState> {
         {
           'players': {mySlot: ud.displayName},
           'colors': {mySlot: myColor},
+          // NEW: color-seat -> real account uid. This is what lets
+          // block/report resolve a chat message ("Blue said X") back
+          // to a specific, stable account instead of just a seat that
+          // gets reassigned every game.
+          'uids': {mySlot: ud.uid},
           'tokens': {
             mySlot:
                 kNestPositions[myColor].map((p) => List<int>.from(p)).toList(),
@@ -696,6 +702,7 @@ class GameNotifier extends StateNotifier<GameState> {
         myColor: kNestPositions[myColor].map((p) => List<int>.from(p)).toList(),
       },
       playerNames: {myColor: ud.displayName},
+      playerUids: {myColor: ud.uid}, // NEW: mirrors the room write above
     );
     _startPoll();
     return code;
@@ -721,6 +728,11 @@ class GameNotifier extends StateNotifier<GameState> {
     // no error shown to the user. _asIndexMap normalizes either shape.
     final players = _asIndexMap(room['players']);
     final colors = _asIndexMap(room['colors']);
+    // NEW: same normalization for the uids map (see 'uids' write in
+    // createRoom above). Rooms created before this feature existed simply
+    // won't have this key — _asIndexMap returns {} for that, which is
+    // fine: those older rooms' messages just come back with no senderUid.
+    final uids = _asIndexMap(room['uids']);
     // FEATURE (online player count): rooms created before this feature
     // (or by any client that omits the field) have no 'max_players' key
     // — default to 4 so those old rooms behave exactly as before. This
@@ -749,6 +761,7 @@ class GameNotifier extends StateNotifier<GameState> {
 
     players[mySlot] = ud.displayName;
     colors[mySlot] = myColor;
+    uids[mySlot] = ud.uid; // NEW: mirrors createRoom's per-seat uid write
     // FIX: same array-vs-map normalization for tokens (see _asIndexMap note above).
     final tokens = _asIndexMap(room['tokens']);
     tokens[mySlot] =
@@ -767,12 +780,17 @@ class GameNotifier extends StateNotifier<GameState> {
         {
           'players': players,
           'colors': colors,
+          'uids': uids, // NEW
           'tokens': tokens,
           'state': newState,
         },
         ud.idToken ?? '');
     final pMap = {
       for (final e in players.entries) int.parse(e.key): e.value as String,
+    };
+    // NEW: same shape as pMap, for the uids map.
+    final uMap = {
+      for (final e in uids.entries) int.parse(e.key): e.value as String,
     };
     final tMap = {
       for (final e in tokens.entries)
@@ -787,6 +805,7 @@ class GameNotifier extends StateNotifier<GameState> {
       mode: GameMode.online,
       twoDiceMode: room['two_dice_mode'] as bool? ?? false,
       playerNames: pMap,
+      playerUids: uMap, // NEW
       tokens: tMap,
       // FIX (turn-stuck-on-Red bug): keep whatever current_turn the room
       // already has (set correctly by createRoom to the creator's real
@@ -847,6 +866,14 @@ class GameNotifier extends StateNotifier<GameState> {
     for (final e in rawP.entries) {
       players[int.parse(e.key.toString())] = e.value.toString();
     }
+    // NEW: same normalization for uids, kept in sync every poll so a
+    // player who joins mid-game is resolvable for block/report without
+    // anyone needing to reload.
+    final playerUids = <int, String>{};
+    final rawU = _asIndexMap(room['uids']);
+    for (final e in rawU.entries) {
+      playerUids[int.parse(e.key.toString())] = e.value.toString();
+    }
     final finished = ((room['finished_players'] as List?) ?? [])
         .map((e) => e as int)
         .toList();
@@ -867,6 +894,7 @@ class GameNotifier extends StateNotifier<GameState> {
       dice2: (room['dice2'] as num?)?.toInt() ?? 0,
       winner: room['winner'] as int?,
       playerNames: players,
+      playerUids: playerUids, // NEW
       numPlayers: players.isNotEmpty ? players.length : state.numPlayers, // FIX: keep turn math in sync as more players join mid-poll
       finishedPlayers: finished,
       chatMessages: chats,
@@ -899,6 +927,11 @@ class GameNotifier extends StateNotifier<GameState> {
       player: kPlayerNames[state.playerIndex],
       msg: msg.trim(),
       timestamp: DateTime.now().millisecondsSinceEpoch,
+      // NEW: tags the message with the real sender uid, when known —
+      // this is what block/report actually match against. Falls back to
+      // null for local/vsBot (no real per-seat account there), same as
+      // before this field existed.
+      senderUid: state.userData?.uid,
     );
     if (state.mode == GameMode.online && state.roomId != null) {
       await _fb.patchRoom(
