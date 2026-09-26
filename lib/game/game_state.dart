@@ -27,6 +27,13 @@ class GameState {
   final int playerColorIndex;
   final String playerDisplayName;
   final Map<int, String> playerNames;
+  // NEW: color-seat -> real account uid, for online rooms. Populated by
+  // createRoom/joinRoom/_pollRoom in game_notifier.dart alongside the
+  // existing playerNames map. Empty for local/vsBot (no real accounts
+  // per seat there). This is what makes block/report possible — it's
+  // the only place a chat message's seat ("Blue") can be resolved back
+  // to a specific, stable account.
+  final Map<int, String> playerUids;
   final Map<int, List<List<int>>> tokens;
   final int dice1;
   final int dice2;
@@ -50,6 +57,7 @@ class GameState {
     this.playerColorIndex = 0,
     this.playerDisplayName = 'You',
     this.playerNames = const {},
+    this.playerUids = const {},
     this.tokens = const {},
     this.dice1 = 0,
     this.dice2 = 0,
@@ -116,6 +124,7 @@ class GameState {
     int? playerColorIndex,
     String? playerDisplayName,
     Map<int, String>? playerNames,
+    Map<int, String>? playerUids,
     Map<int, List<List<int>>>? tokens,
     int? dice1,
     int? dice2,
@@ -139,6 +148,7 @@ class GameState {
         playerColorIndex: playerColorIndex ?? this.playerColorIndex,
         playerDisplayName: playerDisplayName ?? this.playerDisplayName,
         playerNames: playerNames ?? this.playerNames,
+        playerUids: playerUids ?? this.playerUids,
         tokens: tokens ?? this.tokens,
         dice1: dice1 ?? this.dice1,
         dice2: dice2 ?? this.dice2,
@@ -238,17 +248,24 @@ class ChatMessage {
   final String player;
   final String msg;
   final int timestamp;
+  // NEW: the sender's real account uid, when known. Nullable/optional so
+  // messages already stored in existing rooms (written before this field
+  // existed) still parse fine — they just come back with senderUid=null,
+  // which simply means "can't be blocked/reported" rather than crashing.
+  final String? senderUid;
   const ChatMessage({
     required this.player,
     required this.msg,
     required this.timestamp,
+    this.senderUid,
   });
   Map<String, dynamic> toJson() =>
-      {'player': player, 'msg': msg, 'time': timestamp};
+      {'player': player, 'msg': msg, 'time': timestamp, 'uid': senderUid};
   factory ChatMessage.fromJson(Map<String, dynamic> j) => ChatMessage(
         player: j['player'] as String? ?? '',
         msg: j['msg'] as String? ?? '',
         timestamp: (j['time'] as num?)?.toInt() ?? 0,
+        senderUid: j['uid'] as String?,
       );
 }
 
