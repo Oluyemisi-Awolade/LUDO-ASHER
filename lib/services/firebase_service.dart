@@ -112,6 +112,38 @@ class FirebaseService {
   Future<Map<dynamic, dynamic>?> getLeaderboard(String tok) =>
       _get('users', tok);
 
+  // ── Chat safety (online multiplayer only) ────────────────────────────────
+  // NEW — added for chat block/report/age-gating. Every method here is
+  // built strictly on the existing _get/_put/_patch helpers below; no new
+  // HTTP verb or endpoint shape was introduced. Nothing above this section
+  // was changed.
+
+  /// Adds [blockedUid] to the caller's blocklist at
+  /// users/{myUid}/blockedUids/{blockedUid} = true.
+  Future<bool> blockUser(String myUid, String blockedUid, String tok) =>
+      _patch('users/$myUid/blockedUids', {blockedUid: true}, tok);
+
+  /// Removes [blockedUid] from the caller's blocklist. Firebase RTDB's
+  /// PATCH deletes a key when its value is null, so this reuses _patch
+  /// rather than adding a DELETE-verb helper.
+  Future<bool> unblockUser(String myUid, String blockedUid, String tok) =>
+      _patch('users/$myUid/blockedUids', {blockedUid: null}, tok);
+
+  /// Returns the caller's blocklist as {uid: true, ...}, or null if empty.
+  Future<Map<dynamic, dynamic>?> getBlockedUids(String uid, String tok) =>
+      _get('users/$uid/blockedUids', tok);
+
+  /// Writes one report record to reports/{reportId}. Same shape as
+  /// putRoom/putTournament above — a plain node write, no merge.
+  Future<bool> putReport(String reportId, Map<String, dynamic> data, String tok) =>
+      _put('reports/$reportId', data, tok);
+
+  /// Merges a birthdate (ISO "YYYY-MM-DD") into the existing user record
+  /// at users/{uid}, alongside whatever fields UserData already writes
+  /// there. Used only to gate free-text vs preset-phrase chat.
+  Future<bool> saveBirthdate(String uid, String birthdateIso, String tok) =>
+      _patch('users/$uid', {'birthdate': birthdateIso}, tok);
+
   // ── HTTP helpers ──────────────────────────────────────────────────────────
   Future<Map<dynamic, dynamic>?> _get(String path, String tok) async {
     try {
