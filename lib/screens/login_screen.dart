@@ -1,4 +1,12 @@
 // lib/screens/login_screen.dart
+//
+// Adds a Date of Birth field to the "Create Account" flow so the
+// app can default new accounts to restricted (preset-phrase-only)
+// chat and only unlock free-text chat once SafetyService confirms
+// the account is 18+. See services/safety_service.dart.
+//
+// Everything else is unchanged from the previous version.
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -8,6 +16,7 @@ import '../core/constants.dart';
 import '../game/game_notifier.dart';
 import '../game/game_state.dart';
 import '../services/firebase_service.dart';
+import '../services/safety_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common_widgets.dart';
 import 'menu_screen.dart';
@@ -22,6 +31,7 @@ class LoginScreen extends ConsumerStatefulWidget {
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _emailCtrl = TextEditingController();
   final _passCtrl  = TextEditingController();
+  DateTime? _birthdate; // only asked for on the Create Account path
   bool _loading = false;
 
   @override
@@ -31,9 +41,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     super.dispose();
   }
 
+  Future<void> _pickBirthdate() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime(now.year - 18, now.month, now.day),
+      firstDate: DateTime(now.year - 100),
+      lastDate: now,
+      helpText: 'Date of birth',
+    );
+    if (picked != null) setState(() => _birthdate = picked);
+  }
+
   Future<void> _auth(bool signup) async {
     if (_emailCtrl.text.trim().isEmpty || _passCtrl.text.isEmpty) {
       showSnack(context, 'Enter email and password', color: Colors.red.shade700);
+      return;
+    }
+    if (signup && _birthdate == null) {
+      showSnack(context, 'Please enter your date of birth', color: Colors.red.shade700);
       return;
     }
     setState(() => _loading = true);
@@ -62,6 +88,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           idToken: token,
         );
         await fb.saveUser(ud);
+
+        // New account: save birthdate so chat mode can be gated.
+        // Defaults to restricted (preset-phrase) chat until this
+        // implies 18+ — see SafetyService.isFreeTextAllowed.
+        if (signup && _birthdate != null) {
+          final safety = ref.read(safetyServiceProvider);
+          await safety.saveBirthdate(
+            uid: uid,
+            idToken: token,
+            birthdate: _birthdate!,
+          );
+        }
       } else {
         ud = UserData.fromJson(raw, uid, idToken: token);
       }
@@ -113,11 +151,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   // calls FirebaseService.sendPasswordReset. The confirmation message is
   // intentionally the same whether or not the email exists in the
   // system, so this can't be used to probe registered emails.
-  //
-  // Confirmed working end-to-end (Sept 2026) via a temporary diagnostic
-  // build: the request returns 200 and Firebase queues the email
-  // correctly. Any future non-delivery reports are a mail-delivery
-  // question (spam filtering, sender domain), not an app bug.
   Future<void> _forgotPassword() async {
     final ctrl = TextEditingController(text: _emailCtrl.text.trim());
     final email = await showDialog<String>(
@@ -171,9 +204,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
 
     if (!mounted) return;
-    // Same message regardless of success/failure/email-exists — avoids
-    // leaking which emails are registered, and a network hiccup here
-    // shouldn't read as "that email is wrong."
     showSnack(
       context,
       'If an account exists for that email, a reset link has been sent.',
@@ -224,6 +254,41 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   prefixIcon: Icon(Icons.lock_outline_rounded, color: Colors.white38, size: 18),
                 ),
               ).animate().fadeIn(delay: 480.ms).slideY(begin: 0.15, end: 0),
+              const SizedBox(height: 12),
+
+              // Date of birth — only relevant for Create Account, but
+              // shown always so returning users aren't confused by a
+              // field that appears/disappears based on which button
+              // they're about to tap. Tapping Log In simply ignores it.
+              InkWell(
+                onTap: _pickBirthdate,
+                child: InputDecorator(
+                  decoration: const InputDecoration(
+                    labelText: 'Date of birth (required to create an account)',
+                    prefixIcon: Icon(Icons.cake_outlined, color: Colors.white38, size: 18),
+                  ),
+                  child: Text(
+                    _birthdate == null
+                        ? 'Tap to select'
+                        : '${_birthdate!.year}-${_birthdate!.month.toString().padLeft(2, '0')}-${_birthdate!.day.toString().padLeft(2, '0')}',
+                    style: TextStyle(
+                      color: _birthdate == null ? Colors.white38 : Colors.white,
+                    ),
+                  ),
+                ),
+              ).animate().fadeIn(delay: 500.ms).slideY(begin: 0.15, end: 0),
+              const SizedBox(height: 4),
+              const Align(
+                alignment: Alignment.centerLeft,
+                child: Padding(
+                  padding: EdgeInsets.only(left: 4),
+                  child: Text(
+                    'Used to keep chat age-appropriate. Accounts under 18 '
+                    'get preset-phrase chat only.',
+                    style: TextStyle(color: Colors.white38, fontSize: 11),
+                  ),
+                ),
+              ),
 
               // Forgot password link, right-aligned under the password
               // field (standard placement for this pattern).
