@@ -2,9 +2,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../core/constants.dart';
 import '../game/game_notifier.dart';
 import '../game/game_state.dart';
+import '../services/firebase_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/common_widgets.dart';
 import 'colour_picker_screen.dart';
@@ -33,9 +35,113 @@ class MenuScreen extends ConsumerWidget {
     ));
   }
 
+  // NEW: "Delete My Account" flow. Re-verifies the password via a
+  // fresh signIn call (so we never rely on a possibly-stale idToken
+  // for something irreversible), deletes the RTDB record, then
+  // deletes the Auth credential itself, then clears local session.
+  Future<void> _confirmDeleteAccount(
+    BuildContext context,
+    WidgetRef ref,
+    UserData ud,
+  ) async {
+    final passCtrl = TextEditingController();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: AppColors.card,
+        title: const Text('Delete your account?'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'This permanently deletes your account, gameplay stats, '
+              'and chat history. This cannot be undone.',
+              style: TextStyle(color: Colors.white70, fontSize: 13),
+            ),
+            const SizedBox(height: 14),
+            TextField(
+              controller: passCtrl,
+              obscureText: true,
+              autofocus: true,
+              style: const TextStyle(color: Colors.white),
+              decoration: const InputDecoration(
+                labelText: 'Confirm your password',
+                prefixIcon: Icon(Icons.lock_outline_rounded, color: Colors.white38, size: 18),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    if (passCtrl.text.isEmpty) {
+      if (context.mounted) {
+        showSnack(context, 'Password required', color: Colors.red.shade700);
+      }
+      return;
+    }
+
+    final fb = ref.read(firebaseServiceProvider);
+
+    // Re-authenticate to get a guaranteed-fresh idToken before
+    // performing an irreversible delete.
+    final res = await fb.signIn(ud.email, passCtrl.text);
+    if (res == null || res.containsKey('error')) {
+      if (context.mounted) {
+        showSnack(context, 'Incorrect password', color: Colors.red.shade700);
+      }
+      return;
+    }
+
+    final freshToken = res['idToken'] as String;
+    final uid = res['localId'] as String;
+
+    final dataDeleted = await fb.deleteUserData(uid, freshToken);
+    final authDeleted = await fb.deleteAuthAccount(freshToken);
+
+    if (!dataDeleted || !authDeleted) {
+      if (context.mounted) {
+        showSnack(
+          context,
+          'Something went wrong deleting your account. Please try again '
+          'or email oluyemisiitunuolu111@gmail.com.',
+          color: Colors.red.shade700,
+        );
+      }
+      return;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('user_data');
+    await prefs.remove('id_token');
+
+    ref.read(gameProvider.notifier).clearUser();
+    if (context.mounted) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final ud = ref.watch(gameProvider).userData;
+    final isOnlineAccount = ud != null && ud.uid != 'offline';
 
     return Scaffold(
       body: SafeArea(
@@ -198,6 +304,19 @@ class MenuScreen extends ConsumerWidget {
                           style: TextStyle(
                               color: Colors.white38, fontSize: 13)),
                     ),
+
+                    // NEW: only shown for real (non-offline) accounts —
+                    // matches Play Console's in-app account deletion
+                    // requirement.
+                    if (isOnlineAccount) ...[
+                      const SizedBox(height: 4),
+                      TextButton(
+                        onPressed: () => _confirmDeleteAccount(context, ref, ud),
+                        child: const Text('Delete My Account',
+                            style: TextStyle(
+                                color: Colors.redAccent, fontSize: 12.5)),
+                      ),
+                    ],
                   ],
                 ),
               ),
