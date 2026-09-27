@@ -80,6 +80,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
       // Load or create user record
       var raw = await fb.getUser(uid, token);
+
+      // NEW: reject banned accounts. Reuses the getUser fetch above
+      // (no extra round-trip) rather than a separate SafetyService
+      // call — raw is null for brand-new signups, so this is a no-op
+      // for those. This is the actual enforcement point; SafetyService
+      // .isBanned() existed but was never called anywhere until now.
+      if (raw != null && raw['banned'] == true) {
+        if (mounted) {
+          showSnack(context, 'This account has been suspended.',
+              color: Colors.red.shade700);
+        }
+        return;
+      }
+
       UserData ud;
       if (raw == null || !raw.containsKey('email')) {
         ud = UserData(
