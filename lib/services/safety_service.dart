@@ -91,7 +91,10 @@ class SafetyService {
   // action — pair with the manual ban flag below.
   // ---------------------------------------------------------------
 
-  Future<void> reportUser({
+  // Returns whether the report was actually saved. Callers must check
+  // this — a failed write (e.g. rules rejecting it) should never be
+  // reported to the user as a successful submission.
+  Future<bool> reportUser({
     required String reporterUid,
     required String idToken,
     required String reportedUid,
@@ -100,7 +103,7 @@ class SafetyService {
     String? messageSnapshot,
   }) async {
     final reportId = DateTime.now().millisecondsSinceEpoch.toString();
-    await _fb.putReport(
+    return await _fb.putReport(
       reportId,
       {
         'reporterUid': reporterUid,
