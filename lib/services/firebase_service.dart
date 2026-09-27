@@ -76,9 +76,16 @@ class FirebaseService {
   Future<Map<dynamic, dynamic>?> getUser(String uid, String tok) =>
       _get('users/$uid', tok);
 
+  // FIX: was _put (full overwrite) of users/{uid} with only
+  // ud.toJson()'s 8 fields (uid/email/displayName/coins/wins/losses/
+  // games/elo). Every match end calls this, so the very first game
+  // played after signup was silently erasing birthdate (set by
+  // saveBirthdate), blockedUids (set by blockUser), and any banned
+  // flag — none of which are in toJson(). _patch merges instead of
+  // replacing, so those sibling fields survive every stat update.
   Future<void> saveUser(UserData ud) async {
     if (ud.idToken == null || ud.uid == 'offline') return;
-    await _put('users/${ud.uid}', ud.toJson(), ud.idToken!);
+    await _patch('users/${ud.uid}', ud.toJson(), ud.idToken!);
   }
 
   // ── Rooms ─────────────────────────────────────────────────────────────────
