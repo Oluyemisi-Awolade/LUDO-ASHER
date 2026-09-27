@@ -233,7 +233,7 @@ class _ReportUserDialogState extends ConsumerState<ReportUserDialog> {
     setState(() => _sending = true);
     try {
       final safety = ref.read(safetyServiceProvider);
-      await safety.reportUser(
+      final ok = await safety.reportUser(
         reporterUid: widget.myUid,
         idToken: widget.idToken,
         reportedUid: widget.targetUid,
@@ -242,10 +242,20 @@ class _ReportUserDialogState extends ConsumerState<ReportUserDialog> {
         messageSnapshot: widget.messageSnapshot,
       );
       if (mounted) {
-        Navigator.of(context).pop();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Report submitted. Thank you.')),
-        );
+        if (ok) {
+          Navigator.of(context).pop();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Report submitted. Thank you.')),
+          );
+        } else {
+          // FIX: previously showed success regardless of whether the
+          // write actually landed. Keep the dialog open so the person
+          // can retry rather than silently losing the report.
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text('Couldn\'t submit the report — please try again.')),
+          );
+        }
       }
     } finally {
       if (mounted) setState(() => _sending = false);
