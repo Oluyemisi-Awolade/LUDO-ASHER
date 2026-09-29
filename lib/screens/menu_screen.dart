@@ -35,7 +35,7 @@ class MenuScreen extends ConsumerWidget {
     ));
   }
 
-  // NEW: "Delete My Account" flow. Re-verifies the password via a
+  // "Delete My Account" flow. Re-verifies the password via a
   // fresh signIn call (so we never rely on a possibly-stale idToken
   // for something irreversible), deletes the RTDB record, then
   // deletes the Auth credential itself, then clears local session.
@@ -149,7 +149,7 @@ class MenuScreen extends ConsumerWidget {
           children: [
             AppHeader(
               title: 'Ludo Pro Max',
-              // NEW: "How to Play" entry point, top-right of the header —
+              // "How to Play" entry point, top-right of the header —
               // matches the existing AppHeader(actions: ...) pattern used
               // elsewhere in the app.
               actions: [
@@ -305,7 +305,7 @@ class MenuScreen extends ConsumerWidget {
                               color: Colors.white38, fontSize: 13)),
                     ),
 
-                    // NEW: only shown for real (non-offline) accounts —
+                    // Only shown for real (non-offline) accounts —
                     // matches Play Console's in-app account deletion
                     // requirement.
                     if (isOnlineAccount) ...[
@@ -317,6 +317,40 @@ class MenuScreen extends ConsumerWidget {
                                 color: Colors.redAccent, fontSize: 12.5)),
                       ),
                     ],
+
+                    // Privacy Policy / Terms of Service links — shown to
+                    // everyone regardless of login state, since Play
+                    // requires the privacy policy reachable at all times.
+                    const SizedBox(height: 12),
+                    Wrap(
+                      alignment: WrapAlignment.center,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        TextButton(
+                          onPressed: () => launchUrl(
+                            Uri.parse(
+                                'https://oluyemisi-awolade.github.io/LUDO-PRO-MAX/privacy-policy.html'),
+                            mode: LaunchMode.externalApplication,
+                          ),
+                          child: const Text('Privacy Policy',
+                              style: TextStyle(
+                                  color: Colors.white38, fontSize: 11)),
+                        ),
+                        const Text('·',
+                            style: TextStyle(
+                                color: Colors.white24, fontSize: 11)),
+                        TextButton(
+                          onPressed: () => launchUrl(
+                            Uri.parse(
+                                'https://oluyemisi-awolade.github.io/LUDO-PRO-MAX/terms-of-service.html'),
+                            mode: LaunchMode.externalApplication,
+                          ),
+                          child: const Text('Terms of Service',
+                              style: TextStyle(
+                                  color: Colors.white38, fontSize: 11)),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),
