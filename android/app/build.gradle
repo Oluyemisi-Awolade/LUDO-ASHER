@@ -35,9 +35,9 @@ android {
 
     defaultConfig {
         applicationId "com.ludopromax.app"
-        minSdkVersion 21
+        // FIX: Play automatic protection requires minSdk 24 or higher.
+        minSdkVersion 24
         targetSdkVersion 36
-        compileSdkVersion 36
         versionCode 1
         versionName "2.0.0"
         multiDexEnabled true
