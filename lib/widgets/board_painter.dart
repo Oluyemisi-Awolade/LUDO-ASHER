@@ -146,26 +146,26 @@ class BoardPainter extends CustomPainter {
           if (arrowAngle != null &&
               !kSafeSquares.contains(key) &&
               !startMap.containsKey(key)) {
-            _arrow(canvas, cx, cy, cw * 0.27, arrowAngle,
-                Colors.white.withOpacity(0.38));
+            _arrow(canvas, cx, cy, cw * 0.32, arrowAngle,
+                Colors.white.withOpacity(0.9));
           }
           if (hpOwner != null) {
-            _arrow(canvas, cx, cy, cw * 0.22, _homeAngles[hpOwner],
-                AppColors.players[hpOwner].withOpacity(0.6));
+            _arrow(canvas, cx, cy, cw * 0.28, _homeAngles[hpOwner],
+                Colors.white.withOpacity(0.95));
           }
           // Junction cells: draw inward arrow toward centre
           if (r == 7 && c == 6 && !isCentre) {
-            _arrow(canvas, cx, cy, cw * 0.22, 0,
-                AppColors.players[0].withOpacity(0.6));
+            _arrow(canvas, cx, cy, cw * 0.28, 0,
+                Colors.white.withOpacity(0.95));
           } else if (r == 6 && c == 7 && !isCentre) {
-            _arrow(canvas, cx, cy, cw * 0.22, math.pi / 2,
-                AppColors.players[1].withOpacity(0.6));
+            _arrow(canvas, cx, cy, cw * 0.28, math.pi / 2,
+                Colors.white.withOpacity(0.95));
           } else if (r == 7 && c == 8 && !isCentre) {
-            _arrow(canvas, cx, cy, cw * 0.22, math.pi,
-                AppColors.players[2].withOpacity(0.6));
+            _arrow(canvas, cx, cy, cw * 0.28, math.pi,
+                Colors.white.withOpacity(0.95));
           } else if (r == 8 && c == 7 && !isCentre) {
-            _arrow(canvas, cx, cy, cw * 0.22, -math.pi / 2,
-                AppColors.players[3].withOpacity(0.6));
+            _arrow(canvas, cx, cy, cw * 0.28, -math.pi / 2,
+                Colors.white.withOpacity(0.95));
           }
         }
 
@@ -300,6 +300,13 @@ class BoardPainter extends CustomPainter {
       ..lineTo(-r * 0.5,  r * 0.55)
       ..lineTo(-r * 0.5, -r * 0.55)
       ..close();
+    // Dark outline first so the arrow stays readable on any tile colour
+    canvas.drawPath(path,
+        Paint()
+          ..color = Colors.black.withOpacity(0.55)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.6
+          ..strokeJoin = StrokeJoin.round);
     canvas.drawPath(path, Paint()..color = color);
     canvas.restore();
   }
