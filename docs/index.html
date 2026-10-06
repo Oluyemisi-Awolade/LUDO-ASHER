@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ludo Asher</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #14162B;
+    --card: #1E2140;
+    --text: #F1EAD9;
+    --text-dim: #A9AAC4;
+    --red: #E5533D;
+    --green: #2FA35C;
+    --gold: #F2B134;
+    --blue: #3A6EA5;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', -apple-system, sans-serif;
+    line-height: 1.6;
+  }
+  .wrap {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 64px 24px 40px;
+  }
+  .pips {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-bottom: 28px;
+    animation: rollIn 0.6s ease-out;
+  }
+  .pip {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+  }
+  .pip:nth-child(1) { background: var(--red); }
+  .pip:nth-child(2) { background: var(--green); }
+  .pip:nth-child(3) { background: var(--gold); }
+  .pip:nth-child(4) { background: var(--blue); }
+
+  @keyframes rollIn {
+    from { transform: translateY(-16px) rotate(-8deg); opacity: 0; }
+    to   { transform: translateY(0) rotate(0deg); opacity: 1; }
+  }
+
+  h1 {
+    font-family: 'Baloo 2', sans-serif;
+    font-weight: 800;
+    font-size: 2.6rem;
+    text-align: center;
+    margin: 0 0 12px;
+    letter-spacing: -0.01em;
+  }
+  .sub {
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 1.05rem;
+    max-width: 460px;
+    margin: 0 auto 32px;
+  }
+  .badge {
+    display: block;
+    width: fit-content;
+    margin: 0 auto 56px;
+    padding: 8px 18px;
+    border: 1px solid rgba(241,234,217,0.25);
+    border-radius: 999px;
+    font-size: 0.85rem;
+    color: var(--text-dim);
+  }
+
+  h2 {
+    font-family: 'Baloo 2', sans-serif;
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin: 0 0 16px;
+  }
+  .features {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 48px;
+  }
+  .features li {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(241,234,217,0.08);
+    font-size: 0.98rem;
+  }
+  .features li:last-child { border-bottom: none; }
+  .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-top: 8px;
+    flex-shrink: 0;
+  }
+  .features li:nth-child(1) .dot { background: var(--red); }
+  .features li:nth-child(2) .dot { background: var(--green); }
+  .features li:nth-child(3) .dot { background: var(--gold); }
+  .features li:nth-child(4) .dot { background: var(--blue); }
+
+  footer {
+    border-top: 1px solid rgba(241,234,217,0.1);
+    padding-top: 24px;
+    text-align: center;
+    font-size: 0.85rem;
+    color: var(--text-dim);
+  }
+  footer a {
+    color: var(--text-dim);
+    text-decoration: underline;
+    text-decoration-color: rgba(169,170,196,0.4);
+  }
+  footer a:hover { color: var(--text); }
+  .links {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pips { animation: none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="pips">
+    <div class="pip"></div>
+    <div class="pip"></div>
+    <div class="pip"></div>
+    <div class="pip"></div>
+  </div>
+
+  <h1>Ludo Asher</h1>
+  <p class="sub" style="margin-bottom: 56px;">The classic dice game, built for your phone — play bots, pass-and-play with friends, or go head-to-head online.</p>
+
+  <h2>What's inside</h2>
+  <ul class="features">
+    <li><span class="dot"></span> Three bot difficulties, from a relaxed game to a real challenge</li>
+    <li><span class="dot"></span> Local pass-and-play for 2 to 4 players on one device</li>
+    <li><span class="dot"></span> Online multiplayer with room codes and in-match chat</li>
+    <li><span class="dot"></span> ELO ranked matches, tournaments, and a global leaderboard</li>
+  </ul>
+
+  <footer>
+    <div class="links">
+      <a href="privacy-policy.html">Privacy Policy</a>
+      <a href="terms-of-service.html">Terms of Service</a>
+      <a href="delete-account.html">Delete Account</a>
+      <a href="mailto:oluyemisiitunuolu111@gmail.com">Contact</a>
+    </div>
+    <div>&copy; 2026 Ludo Asher</div>
+  </footer>
+
+</div>
+</body>
+</html>
