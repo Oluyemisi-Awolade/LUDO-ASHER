@@ -141,17 +141,14 @@ class MenuScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final ud = ref.watch(gameProvider).userData;
-    final isOnlineAccount = ud != null && ud.uid != 'offline';
 
     return Scaffold(
       body: SafeArea(
         child: Column(
           children: [
             AppHeader(
-              title: 'Ludo Pro Max',
-              // "How to Play" entry point, top-right of the header —
-              // matches the existing AppHeader(actions: ...) pattern used
-              // elsewhere in the app.
+              title: 'Ludo Asher',
+              // "How to Play" entry point, top-right of the header.
               actions: [
                 IconButton(
                   icon: const Icon(Icons.help_outline_rounded, size: 20),
@@ -282,16 +279,9 @@ class MenuScreen extends ConsumerWidget {
                               builder: (_) => const LeaderboardScreen())),
                     ),
 
+                    // Opens the Google Play in-app purchase sheet.
                     const SizedBox(height: 20),
-                    SupportCard(
-                      onDonate: () async {
-                        final url = Uri.parse(kFlutterwaveUrl);
-                        if (await canLaunchUrl(url)) {
-                          launchUrl(url,
-                              mode: LaunchMode.externalApplication);
-                        }
-                      },
-                    ),
+                    const SupportCard(),
                     const SizedBox(height: 16),
                     TextButton(
                       onPressed: () {
@@ -308,7 +298,7 @@ class MenuScreen extends ConsumerWidget {
                     // Only shown for real (non-offline) accounts —
                     // matches Play Console's in-app account deletion
                     // requirement.
-                    if (isOnlineAccount) ...[
+                    if (ud != null && ud.uid != 'offline') ...[
                       const SizedBox(height: 4),
                       TextButton(
                         onPressed: () => _confirmDeleteAccount(context, ref, ud),
