@@ -20,10 +20,13 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      # Flutter 3.27+ is required (Color.withValues, in_app_purchase).
+      # Pinned to 3.27.4 so it stays compatible with the Android Gradle
+      # Plugin and Kotlin versions in android/settings.gradle.
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.22.0'
+          flutter-version: '3.27.4'
           channel: stable
           cache: true
 
@@ -39,7 +42,7 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ludo-pro-max-apk
+          name: ludo-asher-apk
           path: build/app/outputs/flutter-apk/app-release.apk
           retention-days: 30
 
@@ -66,12 +69,8 @@ jobs:
           storeFile=upload-keystore.jks
           EOF
 
-      # DIAGNOSTIC: proves — before Gradle even touches it — whether the
-      # decoded keystore file + password actually work together. If THIS
-      # step fails with the same padding error, the problem is corrupted/
-      # mismatched secrets (base64, password, or alias). If THIS step
-      # passes but Gradle still fails afterward, the problem is somewhere
-      # in how Gradle reads key.properties instead.
+      # Diagnostic: proves the decoded keystore file, password and alias
+      # work together before Gradle touches them.
       - name: Verify keystore is readable (diagnostic)
         if: steps.keystore_check.outputs.has_keystore == 'true'
         run: |
@@ -96,6 +95,6 @@ jobs:
         if: steps.keystore_check.outputs.has_keystore == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: ludo-pro-max-aab
+          name: ludo-asher-aab
           path: build/app/outputs/bundle/release/app-release.aab
           retention-days: 30
