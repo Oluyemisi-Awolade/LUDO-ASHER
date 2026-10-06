@@ -1,11 +1,11 @@
 name: ludo_pro_max
-description: Ludo Pro Max — professional multiplayer Ludo game
-version: 2.0.0+1
+description: Ludo Asher — professional multiplayer Ludo game
+version: 2.1.0+3
 publish_to: none
 
 environment:
-  sdk: ">=3.0.0 <4.0.0"
-  flutter: ">=3.16.0"
+  sdk: ">=3.6.0 <4.0.0"
+  flutter: ">=3.27.0"
 
 dependencies:
   flutter:
@@ -27,6 +27,9 @@ dependencies:
   # Utils
   url_launcher: ^6.2.2
   http: ^1.2.1
+
+  # In-app purchases (Support the Developer coffee tiers)
+  in_app_purchase: ^3.2.0
 
   # Security — verifies requests come from the real, untampered app
   firebase_core: ^2.32.0
