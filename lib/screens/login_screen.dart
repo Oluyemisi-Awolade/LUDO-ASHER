@@ -237,7 +237,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               Text('🎲', style: const TextStyle(fontSize: 72))
                   .animate().scale(delay: 100.ms, duration: 500.ms, curve: Curves.elasticOut),
               const SizedBox(height: 10),
-              Text('Ludo Pro Max',
+              Text('Ludo Asher',
                   style: Theme.of(context).textTheme.displayMedium)
                   .animate().fadeIn(delay: 200.ms, duration: 400.ms)
                   .slideY(begin: 0.2, end: 0),
