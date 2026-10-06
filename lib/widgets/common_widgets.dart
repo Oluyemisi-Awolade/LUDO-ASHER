@@ -1,7 +1,7 @@
 // lib/widgets/common_widgets.dart
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../theme/app_theme.dart';
+import 'support_sheet.dart';
 
 // ── App header bar ────────────────────────────────────────────────────────────
 class AppHeader extends StatelessWidget {
@@ -128,60 +128,11 @@ class StatChip extends StatelessWidget {
 }
 
 // ── Support / donate card ─────────────────────────────────────────────────────
-// Fixed: uses launchUrl with fallback, shows error if it fails
-class SupportCard extends StatefulWidget {
+// Opens the in-app purchase sheet (Google Play Billing) by default.
+// [onDonate] can override that, but is normally left null.
+class SupportCard extends StatelessWidget {
   final VoidCallback? onDonate;
   const SupportCard({super.key, this.onDonate});
-
-  @override
-  State<SupportCard> createState() => _SupportCardState();
-}
-
-class _SupportCardState extends State<SupportCard> {
-  bool _launching = false;
-
-  Future<void> _donate() async {
-    if (_launching) return;
-    setState(() => _launching = true);
-    try {
-      final url = Uri.parse('https://flutterwave.com/pay/ou2066snurqa');
-      bool launched = false;
-
-      // Try external browser first
-      if (await canLaunchUrl(url)) {
-        launched = await launchUrl(
-          url,
-          mode: LaunchMode.externalApplication,
-        );
-      }
-
-      // Fallback: in-app browser
-      if (!launched) {
-        launched = await launchUrl(
-          url,
-          mode: LaunchMode.inAppBrowserView,
-        );
-      }
-
-      if (!launched && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-                'Could not open browser. Visit: flutterwave.com/pay/ou2066snurqa'),
-            duration: Duration(seconds: 5),
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _launching = false);
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -208,22 +159,16 @@ class _SupportCardState extends State<SupportCard> {
           ]),
           const SizedBox(height: 4),
           Text(
-            'Ludo Pro Max is free — buy the dev a coffee ☕',
+            'Ludo Asher is free — buy the dev a coffee ☕',
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           const SizedBox(height: 10),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: _launching ? null : _donate,
-              icon: _launching
-                  ? const SizedBox(
-                      width: 14,
-                      height: 14,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white))
-                  : const Icon(Icons.favorite_rounded, size: 15),
-              label: Text(_launching ? 'Opening…' : '☕  Buy a Coffee'),
+              onPressed: onDonate ?? () => showSupportSheet(context),
+              icon: const Icon(Icons.favorite_rounded, size: 15),
+              label: const Text('☕  Buy a Coffee'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.orange.shade700,
                 foregroundColor: Colors.white,
@@ -264,7 +209,7 @@ class PlayerChip extends StatelessWidget {
       duration: const Duration(milliseconds: 250),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: BoxDecoration(
-        color: active ? color.withOpacity(0.25) : AppColors.card,
+        color: active ? color.withValues(alpha: 0.25) : AppColors.card,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
           color: active ? color : AppColors.border,
