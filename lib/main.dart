@@ -7,17 +7,19 @@ import 'package:firebase_app_check/firebase_app_check.dart';
 import 'firebase_options.dart';
 import 'theme/app_theme.dart';
 import 'screens/login_screen.dart';
+import 'services/support_purchase_service.dart';
+import 'widgets/support_thanks.dart';
+
+/// Lets the thank-you popup appear on any screen.
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // NEW: initialize Firebase, then activate App Check. This must happen
-  // before anything else touches Firebase. Play Integrity attests that
-  // requests are coming from this real, untampered app — this pairs with
-  // the manual X-Firebase-AppCheck header now sent on every request in
-  // firebase_service.dart, since that file talks to Firebase over plain
-  // REST rather than the Firebase SDK (which would attach it
-  // automatically).
+  // Initialize Firebase, then activate App Check. This must happen before
+  // anything else touches Firebase. Play Integrity attests that requests
+  // come from this real, untampered app — this pairs with the manual
+  // X-Firebase-AppCheck header sent on every request in firebase_service.dart.
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
@@ -25,40 +27,45 @@ void main() async {
     androidProvider: AndroidProvider.playIntegrity,
   );
 
+  // Start listening for support purchases right away so any purchase that
+  // completes later (delayed payment, app restart) is still processed, and
+  // show the thank-you popup anywhere in the app.
+  SupportPurchaseService.instance.start();
+  SupportThanks.init(navigatorKey);
+
   // Force portrait — Ludo boards don't benefit from landscape on phones.
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
 
-  // Immersive UI: extend into status/nav bar areas with dark icons.
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
-    statusBarColor:       Colors.transparent,
+    statusBarColor: Colors.transparent,
     statusBarIconBrightness: Brightness.light,
     systemNavigationBarColor: Color(0xFF0D0D1A),
     systemNavigationBarIconBrightness: Brightness.light,
   ));
 
-  runApp(const ProviderScope(child: LudoProMaxApp()));
+  runApp(const ProviderScope(child: LudoAsherApp()));
 }
 
-class LudoProMaxApp extends StatelessWidget {
-  const LudoProMaxApp({super.key});
+class LudoAsherApp extends StatelessWidget {
+  const LudoAsherApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Ludo Pro Max',
+      title: 'Ludo Asher',
+      navigatorKey: navigatorKey,
       debugShowCheckedModeBanner: false,
       theme: AppTheme.dark,
       home: const LoginScreen(),
-      // Smooth page transitions
       builder: (context, child) => MediaQuery(
-        // Clamp font scale — prevents layout breaks on large-text accessibility settings.
+        // Clamp font scale — prevents layout breaks on large-text
+        // accessibility settings.
         data: MediaQuery.of(context).copyWith(
-          textScaler: TextScaler.linear(
-            MediaQuery.of(context).textScaleFactor.clamp(0.8, 1.2),
-          ),
+          textScaler: MediaQuery.textScalerOf(context)
+              .clamp(minScaleFactor: 0.8, maxScaleFactor: 1.2),
         ),
         child: child!,
       ),
