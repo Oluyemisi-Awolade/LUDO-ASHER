@@ -35,6 +35,26 @@ class MenuScreen extends ConsumerWidget {
     ));
   }
 
+  // Opens a web page in the phone's browser. Tries the external browser
+  // first, then the default mode, and tells the player if both fail
+  // instead of failing silently.
+  Future<void> _openUrl(BuildContext context, String url) async {
+    final uri = Uri.parse(url);
+    try {
+      var ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!ok) ok = await launchUrl(uri, mode: LaunchMode.platformDefault);
+      if (!ok && context.mounted) {
+        showSnack(context, 'Could not open the link. Visit: $url',
+            color: Colors.red.shade700);
+      }
+    } catch (e) {
+      if (context.mounted) {
+        showSnack(context, 'Could not open the link. Visit: $url',
+            color: Colors.red.shade700);
+      }
+    }
+  }
+
   // "Delete My Account" flow. Re-verifies the password via a
   // fresh signIn call (so we never rely on a possibly-stale idToken
   // for something irreversible), deletes the RTDB record, then
@@ -317,11 +337,8 @@ class MenuScreen extends ConsumerWidget {
                       crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
                         TextButton(
-                          onPressed: () => launchUrl(
-                            Uri.parse(
-                                'https://oluyemisi-awolade.github.io/LUDO-PRO-MAX/privacy-policy.html'),
-                            mode: LaunchMode.externalApplication,
-                          ),
+                          onPressed: () => _openUrl(context,
+                              'https://oluyemisi-awolade.github.io/LUDO-ASHER/privacy-policy.html'),
                           child: const Text('Privacy Policy',
                               style: TextStyle(
                                   color: Colors.white38, fontSize: 11)),
@@ -330,11 +347,8 @@ class MenuScreen extends ConsumerWidget {
                             style: TextStyle(
                                 color: Colors.white24, fontSize: 11)),
                         TextButton(
-                          onPressed: () => launchUrl(
-                            Uri.parse(
-                                'https://oluyemisi-awolade.github.io/LUDO-PRO-MAX/terms-of-service.html'),
-                            mode: LaunchMode.externalApplication,
-                          ),
+                          onPressed: () => _openUrl(context,
+                              'https://oluyemisi-awolade.github.io/LUDO-ASHER/terms-of-service.html'),
                           child: const Text('Terms of Service',
                               style: TextStyle(
                                   color: Colors.white38, fontSize: 11)),
