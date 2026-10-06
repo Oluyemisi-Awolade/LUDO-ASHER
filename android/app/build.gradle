@@ -13,10 +13,7 @@ if (keystorePropertiesFile.exists()) {
 
 android {
     namespace "com.ludopromax.app"
-    // FIX: bumped from 34 to 36. Google Play Console is currently
-    // requiring new app submissions to target API level 36 (Android 16)
-    // — the old targetSdkVersion 33 below would have been auto-rejected
-    // at upload.
+    // Play requires new submissions to target API 36 (Android 16).
     compileSdk 36
     ndkVersion "25.1.8937393"
 
@@ -35,20 +32,18 @@ android {
 
     defaultConfig {
         applicationId "com.ludopromax.app"
-        // FIX: Play automatic protection requires minSdk 24 or higher.
+        // Play automatic protection requires minSdk 24 or higher.
         minSdkVersion 24
         targetSdkVersion 36
-        versionCode 2
-        versionName "2.0.0"
+        // Each Play upload needs a higher versionCode than the last (last was 2).
+        versionCode 3
+        versionName "2.1.0"
         multiDexEnabled true
     }
 
-    // FIX: real signing config for release builds. Reads from
-    // android/key.properties, which is NOT committed to the repo — CI
-    // writes it from a GitHub secret before building (see workflow).
-    // Falls back to the debug config automatically if key.properties
-    // isn't present yet, so this won't break your existing pipeline
-    // before the keystore secret is set up.
+    // Real signing config for release builds. Reads android/key.properties,
+    // which CI writes from a GitHub secret before building. Falls back to the
+    // debug config if key.properties is not present.
     signingConfigs {
         release {
             if (keystorePropertiesFile.exists()) {
@@ -62,15 +57,16 @@ android {
 
     buildTypes {
         release {
-            // FIX: was hardcoded to signingConfigs.debug (the shared
-            // Android debug key) — not acceptable for a real Play Store
-            // release. Now uses the real release config once
-            // key.properties exists, otherwise safely falls back to debug
-            // so local/CI builds keep working in the meantime.
             signingConfig keystorePropertiesFile.exists() ? signingConfigs.release : signingConfigs.debug
             minifyEnabled true
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+
+            // Adds native debug symbols to the app bundle so Play Console
+            // can show readable crash reports (fixes the upload warning).
+            ndk {
+                debugSymbolLevel 'SYMBOL_TABLE'
+            }
         }
         debug {
             debuggable true
@@ -87,6 +83,6 @@ dependencies {
     implementation 'androidx.multidex:multidex:2.0.1'
 }
 
-// NEW: processes google-services.json — required for firebase_core /
+// Processes google-services.json — required for firebase_core /
 // firebase_app_check to initialize correctly.
 apply plugin: 'com.google.gms.google-services'
