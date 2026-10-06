@@ -1,7 +1,6 @@
 // lib/screens/game_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../core/constants.dart';
 import '../game/game_notifier.dart';
 import '../game/game_state.dart';
@@ -191,12 +190,8 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                         fontWeight: FontWeight.w600)),
               ],
               const Divider(height: 24, color: AppColors.border),
-              SupportCard(
-                onDonate: () async {
-                  final url = Uri.parse(kFlutterwaveUrl);
-                  if (await canLaunchUrl(url)) launchUrl(url);
-                },
-              ),
+              // Opens the in-app coffee purchase sheet (Google Play Billing).
+              const SupportCard(),
               const SizedBox(height: 16),
               Row(children: [
                 Expanded(
@@ -395,7 +390,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 10, vertical: 6),
                         decoration: BoxDecoration(
-                          color: AppColors.violet.withOpacity(0.2),
+                          color: AppColors.violet.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(color: AppColors.violet),
                         ),
