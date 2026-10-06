@@ -28,6 +28,11 @@
 # shared_preferences
 -keep class io.flutter.plugins.sharedpreferences.** { *; }
 
+# Google Play Billing (in_app_purchase) — support-the-developer coffee tiers
+-keep class com.android.billingclient.** { *; }
+-dontwarn com.android.billingclient.**
+-keep class io.flutter.plugins.inapppurchase.** { *; }
+
 # OkHttp / networking
 -dontwarn okhttp3.**
 -dontwarn okio.**
