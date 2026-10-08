@@ -21,7 +21,7 @@ class BoardPainter extends CustomPainter {
     '6,1':0,'6,2':0,'6,3':0,'6,4':0,'6,5':0,
     '5,6':-math.pi/2,'4,6':-math.pi/2,'3,6':-math.pi/2,
     '2,6':-math.pi/2,'1,6':-math.pi/2,'0,6':-math.pi/2,
-    '0,7':0,'0,8':0,
+    '0,7':0,'0,8':math.pi/2,
     '1,8':math.pi/2,'2,8':math.pi/2,'3,8':math.pi/2,
     '4,8':math.pi/2,'5,8':math.pi/2,
     '6,9':0,'6,10':0,'6,11':0,'6,12':0,'6,13':0,'6,14':0,
@@ -30,12 +30,12 @@ class BoardPainter extends CustomPainter {
     '8,11':math.pi,'8,10':math.pi,'8,9':math.pi,
     '9,8':math.pi/2,'10,8':math.pi/2,'11,8':math.pi/2,
     '12,8':math.pi/2,'13,8':math.pi/2,'14,8':math.pi/2,
-    '14,7':math.pi,'14,6':math.pi,
+    '14,7':math.pi,'14,6':-math.pi/2,
     '13,6':-math.pi/2,'12,6':-math.pi/2,'11,6':-math.pi/2,
     '10,6':-math.pi/2,'9,6':-math.pi/2,
     '8,5':math.pi,'8,4':math.pi,'8,3':math.pi,
     '8,2':math.pi,'8,1':math.pi,'8,0':math.pi,
-    '7,0':-math.pi/2,'6,0':-math.pi/2,
+    '7,0':-math.pi/2,'6,0':0,
   };
 
   // Inward arrows for 5-cell home columns
