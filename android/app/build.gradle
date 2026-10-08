@@ -42,7 +42,7 @@ android {
         minSdkVersion 24
         targetSdkVersion 36
         // Each Play upload needs a higher versionCode than the last (last was 2).
-        versionCode 3
+        versionCode 4
         versionName "2.1.0"
         multiDexEnabled true
     }
