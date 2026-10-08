@@ -3,6 +3,9 @@ plugins {
     id "com.android.application"
     id "kotlin-android"
     id "dev.flutter.flutter-gradle-plugin"
+    // Processes google-services.json — required for firebase_core /
+    // firebase_app_check to initialize correctly.
+    id "com.google.gms.google-services"
 }
 
 def keystorePropertiesFile = rootProject.file('key.properties')
@@ -15,15 +18,18 @@ android {
     namespace "com.ludopromax.app"
     // Play requires new submissions to target API 36 (Android 16).
     compileSdk 36
-    ndkVersion "25.1.8937393"
+    // Uses the NDK version bundled with this Flutter release. 16 KB alignment
+    // comes from AGP 8.5.1+ plus the current Flutter engine and plugins; this
+    // app has no native C/C++ code of its own.
+    ndkVersion flutter.ndkVersion
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
     }
 
     kotlinOptions {
-        jvmTarget = '1.8'
+        jvmTarget = '17'
     }
 
     sourceSets {
@@ -63,7 +69,7 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
 
             // Adds native debug symbols to the app bundle so Play Console
-            // can show readable crash reports (fixes the upload warning).
+            // can show readable crash reports.
             ndk {
                 debugSymbolLevel 'SYMBOL_TABLE'
             }
@@ -79,10 +85,5 @@ flutter {
 }
 
 dependencies {
-    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:1.9.10"
     implementation 'androidx.multidex:multidex:2.0.1'
 }
-
-// Processes google-services.json — required for firebase_core /
-// firebase_app_check to initialize correctly.
-apply plugin: 'com.google.gms.google-services'
