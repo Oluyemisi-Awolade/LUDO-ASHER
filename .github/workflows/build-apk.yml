@@ -20,13 +20,13 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      # Flutter 3.27+ is required (Color.withValues, in_app_purchase).
-      # Pinned to 3.27.4 so it stays compatible with the Android Gradle
-      # Plugin and Kotlin versions in android/settings.gradle.
+      # Flutter 3.27+ is required (Color.withValues, in_app_purchase); 3.35 adds 16 KB page-size support.
+      # Pinned so the build is repeatable and matches the Android Gradle
+      # Plugin (8.9.1) and Kotlin (2.1.0) versions in android/settings.gradle.
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.27.4'
+          flutter-version: '3.35.3'
           channel: stable
           cache: true
 
