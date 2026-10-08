@@ -1,18 +1,6 @@
 // android/build.gradle
-buildscript {
-    ext.kotlin_version = '1.9.10'
-    repositories {
-        google()
-        mavenCentral()
-    }
-    dependencies {
-        classpath 'com.android.tools.build:gradle:8.1.0'
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
-        // NEW: required to process google-services.json, which
-        // firebase_core / firebase_app_check depend on.
-        classpath 'com.google.gms:google-services:4.5.0'
-    }
-}
+// The Android Gradle Plugin, Kotlin and google-services plugin versions now
+// live in android/settings.gradle, so the old buildscript block is removed.
 
 allprojects {
     repositories {
