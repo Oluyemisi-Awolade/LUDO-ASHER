@@ -20,13 +20,15 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      # Flutter 3.27+ is required (Color.withValues, in_app_purchase); 3.35 adds 16 KB page-size support.
-      # Pinned so the build is repeatable and matches the Android Gradle
-      # Plugin (8.9.1) and Kotlin (2.1.0) versions in android/settings.gradle.
+      # in_app_purchase 3.3.0+ (Play Billing Library 8, required by Google Play)
+      # needs Dart 3.10+, which is Flutter 3.38. We stay on the 3.38 line (not
+      # the newest Flutter) because newer Flutter raises its minimum Kotlin/
+      # Gradle versions and this project uses AGP 8.9.1 + Kotlin 2.1.0
+      # (android/settings.gradle). 3.38.x = latest 3.38 patch.
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.35.3'
+          flutter-version: '3.38.x'
           channel: stable
           cache: true
 
