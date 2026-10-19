@@ -170,6 +170,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final email = await showDialog<String>(
       context: context,
       builder: (dialogContext) => AlertDialog(
+        scrollable: true,
         backgroundColor: AppColors.card,
         title: const Text('Reset password'),
         content: Column(
