@@ -69,6 +69,7 @@ class MenuScreen extends ConsumerWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
+        scrollable: true,
         backgroundColor: AppColors.card,
         title: const Text('Delete your account?'),
         content: Column(
