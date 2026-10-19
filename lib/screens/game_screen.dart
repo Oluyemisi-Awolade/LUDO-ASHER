@@ -292,167 +292,272 @@ class _GameScreenState extends ConsumerState<GameScreen> {
         ? (gs.tokens.keys.toList()..sort())
         : List<int>.generate(gs.numPlayers, (i) => i);
 
+    // ════════════════════════════════════════════════════════════════════
+    // LANDSCAPE SUPPORT: the pieces below are the SAME widgets that used
+    // to be written inline inside the Column. They are now built once as
+    // local variables so the portrait layout (unchanged) and the new
+    // landscape layout can both use them.
+    // ════════════════════════════════════════════════════════════════════
+
+    // ── Top bar ────────────────────────────────────────────────────────
+    final topBar = Container(
+      color: AppColors.surface,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      child: Row(children: [
+        IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
+          color: Colors.white,
+          onPressed: _goBack,
+        ),
+        Expanded(child: _StatusBar(gs: gs)),
+        IconButton(
+          icon: Icon(audio.sfxEnabled
+              ? Icons.volume_up_rounded
+              : Icons.volume_off_rounded, size: 20),
+          color: Colors.white70,
+          onPressed: () =>
+              setState(() => audio.sfxEnabled = !audio.sfxEnabled),
+        ),
+        IconButton(
+          icon: Icon(audio.bgmEnabled
+              ? Icons.music_note_rounded
+              : Icons.music_off_rounded, size: 20),
+          color: Colors.white70,
+          onPressed: () {
+            setState(() => audio.bgmEnabled = !audio.bgmEnabled);
+            if (audio.bgmEnabled) audio.startBgm();
+            else audio.stopBgm();
+          },
+        ),
+        if (gs.mode == GameMode.online)
+          IconButton(
+            icon: const Icon(Icons.chat_bubble_outline_rounded,
+                size: 20),
+            color: Colors.white70,
+            onPressed: () =>
+                setState(() => _showChat = !_showChat),
+          ),
+      ]),
+    );
+
+    // ── Player chips (shared) ──────────────────────────────────────────
+    // FIX: iterate seatColors (real occupied colors for
+    // online; 0..numPlayers-1 for local/vsBot) instead of
+    // a raw `for (int i = 0; i < gs.numPlayers; i++)`.
+    final playerChips = <Widget>[
+      for (final c in seatColors)
+        PlayerChip(
+          index:    c,
+          name:     gs.playerNames[c] ?? kPlayerNames[c],
+          active:   c == gs.currentTurn && !gs.gameOver,
+          finished: gs.finishedPlayers.contains(c),
+          color:    kPlayerColors[c],
+        ),
+    ];
+
+    // ── Board ──────────────────────────────────────────────────────────
+    final board = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+      child: const BoardWidget(),
+    );
+
+    // ── Dice group (shared): both dice + "= total" badge ───────────────
+    final diceGroup = Row(children: [
+      // Always show BOTH dice
+      DiceWidget(value: gs.dice1),
+      if (gs.twoDiceMode) ...[
+        const SizedBox(width: 10),
+        DiceWidget(value: gs.dice2),
+      ],
+      if (gs.diceRolled) ...[
+        const SizedBox(width: 10),
+        Container(
+          padding: const EdgeInsets.symmetric(
+              horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: AppColors.violet.withValues(alpha: 0.2),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: AppColors.violet),
+          ),
+          child: Text(
+            '= ${gs.totalDice}',
+            style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 16),
+          ),
+        ),
+      ],
+    ]);
+
+    final rollButton = RollButton(
+      label:     rollLabel,
+      enabled:   canRoll,
+      color:     rollColor,
+      onPressed: canRoll ? _roll : null,
+    );
+
+    // ── Emote bar ──────────────────────────────────────────────────────
+    final emoteBar = Container(
+      color: AppColors.bg,
+      height: 42,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(
+            horizontal: 8, vertical: 5),
+        itemCount: kEmotes.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 6),
+        itemBuilder: (_, i) => GestureDetector(
+          onTap: () =>
+              ref.read(gameProvider.notifier).sendChat(kEmotes[i]),
+          child: Container(
+            width: 36, height: 32,
+            decoration: BoxDecoration(
+              color: AppColors.card,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            alignment: Alignment.center,
+            child: Text(kEmotes[i],
+                style: const TextStyle(fontSize: 16)),
+          ),
+        ),
+      ),
+    );
+
+    // ── Chat (online only) ─────────────────────────────────────────────
+    // NEW: freeTextAllowed passed through — decides whether
+    // _ChatPanel renders a real text field or preset-phrase chips.
+    final Widget? chatPanel = (gs.mode == GameMode.online && _showChat)
+        ? _ChatPanel(
+            chatCtrl: _chatCtrl,
+            gs: gs,
+            freeTextAllowed: _freeTextAllowed,
+            blockedUids: _blockedUids,
+            onBlocked: (uid) =>
+                setState(() => _blockedUids = {..._blockedUids, uid}),
+          )
+        : null;
+
+    final isLandscape =
+        MediaQuery.orientationOf(context) == Orientation.landscape;
+
+    // ════════════════════════════════════════════════════════════════════
+    // PORTRAIT — identical layout and order to the original code.
+    // ════════════════════════════════════════════════════════════════════
+    if (!isLandscape) {
+      return Scaffold(
+        body: SafeArea(
+          child: Column(
+            children: [
+              topBar,
+
+              // ── Player strip ──────────────────────────────────────────
+              Container(
+                color: AppColors.bg,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: playerChips,
+                ),
+              ),
+
+              // ── Board ─────────────────────────────────────────────────
+              Expanded(child: board),
+
+              // ── Two dice + Roll button ─────────────────────────────────
+              Container(
+                color: AppColors.surface,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    diceGroup,
+                    rollButton,
+                  ],
+                ),
+              ),
+
+              emoteBar,
+
+              if (chatPanel != null) chatPanel,
+            ],
+          ),
+        ),
+      );
+    }
+
+    // ════════════════════════════════════════════════════════════════════
+    // LANDSCAPE (new) — board on the left, controls in a scrollable side
+    // panel on the right. Top bar stays full width. The side panel scrolls
+    // so nothing can overflow on short phone screens.
+    // ════════════════════════════════════════════════════════════════════
     return Scaffold(
       body: SafeArea(
         child: Column(
           children: [
-            // ── Top bar ──────────────────────────────────────────────────
-            Container(
-              color: AppColors.surface,
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-              child: Row(children: [
-                IconButton(
-                  icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
-                  color: Colors.white,
-                  onPressed: _goBack,
-                ),
-                Expanded(child: _StatusBar(gs: gs)),
-                IconButton(
-                  icon: Icon(audio.sfxEnabled
-                      ? Icons.volume_up_rounded
-                      : Icons.volume_off_rounded, size: 20),
-                  color: Colors.white70,
-                  onPressed: () =>
-                      setState(() => audio.sfxEnabled = !audio.sfxEnabled),
-                ),
-                IconButton(
-                  icon: Icon(audio.bgmEnabled
-                      ? Icons.music_note_rounded
-                      : Icons.music_off_rounded, size: 20),
-                  color: Colors.white70,
-                  onPressed: () {
-                    setState(() => audio.bgmEnabled = !audio.bgmEnabled);
-                    if (audio.bgmEnabled) audio.startBgm();
-                    else audio.stopBgm();
-                  },
-                ),
-                if (gs.mode == GameMode.online)
-                  IconButton(
-                    icon: const Icon(Icons.chat_bubble_outline_rounded,
-                        size: 20),
-                    color: Colors.white70,
-                    onPressed: () =>
-                        setState(() => _showChat = !_showChat),
-                  ),
-              ]),
-            ),
-
-            // ── Player strip ──────────────────────────────────────────────
-            Container(
-              color: AppColors.bg,
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  // FIX: iterate seatColors (real occupied colors for
-                  // online; 0..numPlayers-1 for local/vsBot) instead of
-                  // a raw `for (int i = 0; i < gs.numPlayers; i++)`.
-                  for (final c in seatColors)
-                    PlayerChip(
-                      index:    c,
-                      name:     gs.playerNames[c] ?? kPlayerNames[c],
-                      active:   c == gs.currentTurn && !gs.gameOver,
-                      finished: gs.finishedPlayers.contains(c),
-                      color:    kPlayerColors[c],
-                    ),
-                ],
-              ),
-            ),
-
-            // ── Board ─────────────────────────────────────────────────────
+            topBar,
             Expanded(
-              child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                child: const BoardWidget(),
-              ),
-            ),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final panelWidth =
+                      (constraints.maxWidth * 0.36).clamp(260.0, 380.0);
+                  return Row(
+                    children: [
+                      // Board fills the remaining area. Center gives it LOOSE
+                      // constraints so BoardWidget's AspectRatio(1) can pick a
+                      // true square (min of width/height). Without Center the
+                      // board would be forced into a stretched rectangle.
+                      Expanded(child: Center(child: board)),
 
-            // ── Two dice + Roll button ─────────────────────────────────────
-            Container(
-              color: AppColors.surface,
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  // Always show BOTH dice
-                  Row(children: [
-                    DiceWidget(value: gs.dice1),
-                    if (gs.twoDiceMode) ...[
-                      const SizedBox(width: 10),
-                      DiceWidget(value: gs.dice2),
-                    ],
-                    if (gs.diceRolled) ...[
-                      const SizedBox(width: 10),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: AppColors.violet.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: AppColors.violet),
-                        ),
-                        child: Text(
-                          '= ${gs.totalDice}',
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16),
+                      // Side panel
+                      SizedBox(
+                        width: panelWidth,
+                        child: SingleChildScrollView(
+                          child: Column(
+                            children: [
+                              // Player chips wrap onto extra lines if needed.
+                              Container(
+                                width: double.infinity,
+                                color: AppColors.bg,
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 6),
+                                child: Wrap(
+                                  alignment: WrapAlignment.spaceAround,
+                                  spacing: 8,
+                                  runSpacing: 6,
+                                  children: playerChips,
+                                ),
+                              ),
+
+                              // Dice, then the roll button underneath.
+                              Container(
+                                width: double.infinity,
+                                color: AppColors.surface,
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 10),
+                                child: Column(
+                                  children: [
+                                    diceGroup,
+                                    const SizedBox(height: 10),
+                                    rollButton,
+                                  ],
+                                ),
+                              ),
+
+                              emoteBar,
+
+                              if (chatPanel != null) chatPanel,
+                            ],
+                          ),
                         ),
                       ),
                     ],
-                  ]),
-                  RollButton(
-                    label:     rollLabel,
-                    enabled:   canRoll,
-                    color:     rollColor,
-                    onPressed: canRoll ? _roll : null,
-                  ),
-                ],
+                  );
+                },
               ),
             ),
-
-            // ── Emote bar ─────────────────────────────────────────────────
-            Container(
-              color: AppColors.bg,
-              height: 42,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 8, vertical: 5),
-                itemCount: kEmotes.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 6),
-                itemBuilder: (_, i) => GestureDetector(
-                  onTap: () =>
-                      ref.read(gameProvider.notifier).sendChat(kEmotes[i]),
-                  child: Container(
-                    width: 36, height: 32,
-                    decoration: BoxDecoration(
-                      color: AppColors.card,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(kEmotes[i],
-                        style: const TextStyle(fontSize: 16)),
-                  ),
-                ),
-              ),
-            ),
-
-            // ── Chat (online only) ─────────────────────────────────────────
-            // NEW: freeTextAllowed passed through — decides whether
-            // _ChatPanel renders a real text field or preset-phrase chips.
-            if (gs.mode == GameMode.online && _showChat)
-              _ChatPanel(
-                chatCtrl: _chatCtrl,
-                gs: gs,
-                freeTextAllowed: _freeTextAllowed,
-                blockedUids: _blockedUids,
-                onBlocked: (uid) =>
-                    setState(() => _blockedUids = {..._blockedUids, uid}),
-              ),
           ],
         ),
       ),
