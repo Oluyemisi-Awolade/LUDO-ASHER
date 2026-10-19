@@ -87,6 +87,14 @@ class _ColourPickerScreenState extends ConsumerState<ColourPickerScreen> {
   Widget build(BuildContext context) {
     final maxColours = _maxColours;
 
+    // LANDSCAPE TIDY: when the phone is rotated, the 2x2 grid used to
+    // stretch across the whole wide screen, making huge tiles. Now the
+    // content is centred and limited to 440 px wide, and the tiles are
+    // shorter in landscape. Portrait phones are unaffected (a phone is
+    // narrower than 440 px, and the tile shape stays 1.1 as before).
+    final isLandscape =
+        MediaQuery.orientationOf(context) == Orientation.landscape;
+
     return Scaffold(
       body: SafeArea(
         child: Column(
@@ -98,6 +106,9 @@ class _ColourPickerScreenState extends ConsumerState<ColourPickerScreen> {
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
+                child: Center(
+                child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 440),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -130,7 +141,7 @@ class _ColourPickerScreenState extends ConsumerState<ColourPickerScreen> {
                       physics: const NeverScrollableScrollPhysics(),
                       crossAxisSpacing: 16,
                       mainAxisSpacing:  16,
-                      childAspectRatio: 1.1,
+                      childAspectRatio: isLandscape ? 1.4 : 1.1,
                       children: List.generate(maxColours, (i) {
                         final sel = _selected == i;
                         final color = kPlayerColors[i];
@@ -256,6 +267,8 @@ class _ColourPickerScreenState extends ConsumerState<ColourPickerScreen> {
                       ),
                     ),
                   ],
+                ),
+                ),
                 ),
               ),
             ),
