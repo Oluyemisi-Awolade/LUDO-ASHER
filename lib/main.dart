@@ -33,12 +33,6 @@ void main() async {
   SupportPurchaseService.instance.start();
   SupportThanks.init(navigatorKey);
 
-  // Force portrait — Ludo boards don't benefit from landscape on phones.
-  await SystemChrome.setPreferredOrientations([
-    DeviceOrientation.portraitUp,
-    DeviceOrientation.portraitDown,
-  ]);
-
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
     statusBarIconBrightness: Brightness.light,
